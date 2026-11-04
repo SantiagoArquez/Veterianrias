@@ -1,0 +1,117 @@
+services:
+
+  # ---------------- Bases de datos (una por microservicio) ----------------
+  mysql-owners:
+    image: mysql:8.4
+    container_name: mysql-owners
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: owners_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - owners-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - veterinaria-net
+
+  mysql-pets:
+    image: mysql:8.4
+    container_name: mysql-pets
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: pets_db
+    ports:
+      - "3308:3306"
+    volumes:
+      - pets-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - veterinaria-net
+
+  mysql-appointments:
+    image: mysql:8.4
+    container_name: mysql-appointments
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: appointments_db
+    ports:
+      - "3309:3306"
+    volumes:
+      - appointments-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - veterinaria-net
+
+  # ---------------- Microservicios ----------------
+  owner-service:
+    build: ./owner-service
+    container_name: owner-service
+    depends_on:
+      mysql-owners:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql-owners:3306/owners_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      PET_SERVICE_URL: http://pet-service:8082
+    ports:
+      - "8081:8081"
+    restart: on-failure
+    networks:
+      - veterinaria-net
+
+  pet-service:
+    build: ./pet-service
+    container_name: pet-service
+    depends_on:
+      mysql-pets:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql-pets:3306/pets_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      OWNER_SERVICE_URL: http://owner-service:8081
+    ports:
+      - "8082:8082"
+    restart: on-failure
+    networks:
+      - veterinaria-net
+
+  appointment-service:
+    build: ./appointment-service
+    container_name: appointment-service
+    depends_on:
+      mysql-appointments:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql-appointments:3306/appointments_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      PET_SERVICE_URL: http://pet-service:8082
+    ports:
+      - "8083:8083"
+    restart: on-failure
+    networks:
+      - veterinaria-net
+
+networks:
+  veterinaria-net:
+    driver: bridge
+
+volumes:
+  owners-data:
+  pets-data:
+  appointments-data:

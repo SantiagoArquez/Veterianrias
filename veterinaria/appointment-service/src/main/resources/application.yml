@@ -1,0 +1,29 @@
+# ===== Configuración de Appointment-Service =====
+server:
+  port: 8083
+
+spring:
+  application:
+    name: appointment-service
+  datasource:
+    # Las variables DB_URL, DB_USER y DB_PASSWORD las pone docker-compose; si no existen se usa MySQL local.
+    url: ${DB_URL:jdbc:mysql://localhost:3306/appointments_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update   # crea/actualiza las tablas automáticamente
+    open-in-view: false
+
+# Dirección del otro microservicio con el que se comunica
+pet-service:
+  url: ${PET_SERVICE_URL:http://localhost:8082}
+
+# Tiempos máximos de espera al llamar a otros servicios (milisegundos)
+clients:
+  connect-timeout-ms: ${CLIENT_CONNECT_TIMEOUT_MS:2000}
+  read-timeout-ms: ${CLIENT_READ_TIMEOUT_MS:5000}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
