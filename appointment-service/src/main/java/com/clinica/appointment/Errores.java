@@ -1,6 +1,6 @@
-package com.clinica.owner;
+package com.clinica.appointment;
 
-import com.clinica.owner.Dtos.ApiError;
+import com.clinica.appointment.Dtos.ApiError;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,10 +8,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -92,6 +94,19 @@ public class Errores {
         @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
         public ResponseEntity<ApiError> peticionInvalida(Exception ex, HttpServletRequest req) {
             return responder(HttpStatus.BAD_REQUEST, "La petición tiene un formato inválido", req);
+        }
+
+        /** Ruta que no existe (por ejemplo "/" o "/favicon.ico"): es un 404, no un error del servidor. */
+        @ExceptionHandler(NoResourceFoundException.class)
+        public ResponseEntity<ApiError> rutaInexistente(NoResourceFoundException ex, HttpServletRequest req) {
+            return responder(HttpStatus.NOT_FOUND, "La ruta solicitada no existe", req);
+        }
+
+        /** Método HTTP no permitido en esa ruta (por ejemplo POST sobre un endpoint solo GET) -> 405. */
+        @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+        public ResponseEntity<ApiError> metodoNoPermitido(HttpRequestMethodNotSupportedException ex,
+                                                          HttpServletRequest req) {
+            return responder(HttpStatus.METHOD_NOT_ALLOWED, "Método HTTP no permitido en esta ruta", req);
         }
 
         /** Cualquier error no previsto: se registra en el log y se responde 500 sin detalles internos. */
